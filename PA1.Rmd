@@ -1,0 +1,120 @@
+---
+title: "Reproducible Research Project 1"
+author: "William Lewis"
+date: "5/25/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Personal Self Movement Activity Analysis
+
+This analysis examines the number of steps taken over 61 days of activity from October through November 2012 captured in 5-minute intervals for each 24 hour period using a personal activity monitoring device.
+
+```{r process, echo=TRUE, message=FALSE}
+library(ggplot2)
+library(dplyr)
+activity <- read.csv("activity.csv")
+activity$date <- as.Date(activity$date, "%Y-%m-%d")
+```
+Let's take a look at the **total** number of steps taken each day.
+
+```{r tot_steps, echo=TRUE, warning=FALSE}
+ggplot(data = activity) +
+      geom_histogram(mapping = aes(x = date, y = steps), stat = "identity", fill = "blue") + 
+      ylab("Average Number of Steps")
+```
+
+Now let's examine both the mean and median steps taken per day.
+
+```{r }
+activity %>% 
+      group_by(date) %>% 
+      summarise(avg_steps = mean(steps, na.rm = T), 
+                median_steps = median(steps, na.rm = T)) %>% 
+      ungroup()
+```
+
+Examine the average daily activity pattern with a time series plot on the 5-minute intervals and average number of steps taken averaged across all days.
+
+```{r}
+activity %>% 
+      group_by(interval) %>% 
+      summarise(avg_steps = mean(steps, na.rm = T)) %>% 
+      ungroup() %>% 
+      ggplot() +
+      geom_line(aes(x=interval, y = avg_steps)) +
+      ylab("Average Number of Steps")
+
+maximum <- which.max(tapply(activity$steps, activity$interval, mean, na.rm = T))
+```
+
+We can see from this plot that the 5-minute interval that contains the max number of steps in the dataset is the interval `r names(maximum)`.
+
+```{r missing}
+missing_val <- sum(is.na(activity))
+```
+
+There are `r missing_val` missing values in this dataset. Let's find out where these missing values occur.
+
+```{r }
+activity %>% 
+      group_by(date) %>% 
+      summarise(blank_ints = sum(is.na(steps))) %>% 
+      filter(blank_ints > 0) %>% 
+      ungroup()
+```
+
+It appears there are 8 entire days missing data.  To impute the missing values for these days, we will take the average steps across each interval period and use those vaules for each interval period that does not contain data.
+
+```{r impute}
+interval_summary <- activity %>% 
+      group_by(interval) %>% 
+      summarise(avg_int = mean(steps, na.rm = T),
+                max_int = max(steps, na.rm = T)) %>% 
+      ungroup()
+impute_values <- rep(interval_summary$avg_int,8)
+activity[is.na(activity$steps), "steps"] <- impute_values
+```
+
+Now let's look at the **total** number of steps taken per day again with the imputed values.
+
+```{r warning=FALSE}
+ggplot(data = activity) +
+      geom_histogram(mapping = aes(x = date, y = steps), stat = "identity", 
+                     fill = "blue")
+```
+
+We can explore how this changes the **mean** and **median** values per day.  We see that values now exist for each day.  
+
+```{r}
+activity %>% 
+      group_by(date) %>% 
+      summarise(avg_steps = mean(steps, na.rm = T),
+                med_steps = median(steps, na.rm = T)) %>% 
+      ungroup()
+```
+
+We want to take a closer look by comparing weekday activity to weekend activity.  Let's create a new variable to identify which day is a weekday and which is a weekend.
+
+```{r weekday}
+activity$day <- "weekday"
+activity[weekdays(activity$date) %in% c("Saturday","Sunday"), "day"] <- "weekend"
+```
+
+Let's look at the average number of steps again using a Time-Series plot of the 5-min intervals on average number of steps taken averaged across all weekdays and weekends.
+
+```{r}
+activity %>% 
+      group_by(interval, day) %>% 
+      summarise(avg_steps = mean(steps, na.rm = T)) %>% 
+      ungroup() %>% 
+      ggplot() +
+      geom_line(mapping = aes(x = interval, y = avg_steps), color = "blue") + 
+      facet_wrap(~ day, nrow = 2) +
+      ylab("Average Number of Steps")
+```
+
+From these two plots, we can clearly see that during weekdays, there is a high period of activity in the morning hours probably prior to going to work or school. We can also see how the weekend days have several high periods of activity throughout the entire day.

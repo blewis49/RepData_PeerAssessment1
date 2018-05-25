@@ -12,7 +12,7 @@ activity$date <- as.Date(activity$date, "%Y-%m-%d")
 
 # a histogram of the total steps taken each day
 ggplot(data = activity) +
-      geom_histogram(mapping = aes(x = date, y = steps), stat = "identity", fill = "blue")
+      geom_histogram(mapping = aes(x = date, y = steps), stat = "identity", fill = "blue") + ylab("Average Number of Steps")
 
 # calculation of mean and median steps taken each day
 activity %>% 
@@ -57,7 +57,12 @@ int_sum <- activity %>%
                 max_int = max(steps, na.rm = T)) %>% 
       ungroup()
 
-tapply(activity$steps, activity$interval, mean, na.rm = T)
+m <-which.max(tapply(activity$steps, activity$interval, mean, na.rm = T))
+names(m)
+
+activity %>% 
+      filter(interval == 835) %>% 
+      summarise(avg = mean(steps, na.rm = T))
 
 impute_values <- rep(int_sum$avg_int,8)
 activity[is.na(activity$steps), "steps"] <- impute_values
