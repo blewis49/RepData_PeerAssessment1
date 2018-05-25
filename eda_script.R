@@ -76,4 +76,14 @@ activity %>%
 activity$day <- "weekday"
 activity[weekdays(activity$date) %in% c("Saturday","Sunday"), "day"] <- "weekend"
 
+# Time-Series plot of the 5-min intervals on average number of steps taken averaged across all weekdays and weekends
+#set up the 2x1 frame for plots
+activity %>% 
+      group_by(interval, day) %>% 
+      summarise(avg_steps = mean(steps, na.rm = T)) %>% 
+      ungroup() %>% 
+      ggplot() +
+      geom_line(mapping = aes(x = interval, y = avg_steps), color = "blue") + 
+      facet_wrap(~ day, nrow = 2) +
+      ylab("Average Number of Steps")
 
